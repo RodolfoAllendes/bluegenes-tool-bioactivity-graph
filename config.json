@@ -1,0 +1,13 @@
+{
+  "accepts": ["id"],
+  "classes": ["Gene"],
+  "files" : {
+    "css" : "dist/style.css",
+    "js" : "dist/bundle.js"
+  },
+  "toolName" : {
+    "human" :"TargetMine Bioactivity Graph",
+    "cljs" :"bluegenesToolBioactiviyGraph"    
+  },
+  "version": 2
+}
