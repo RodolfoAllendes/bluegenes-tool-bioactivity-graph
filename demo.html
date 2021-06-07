@@ -21,20 +21,21 @@
   <!-- These are the styles YOU implement in src/style.less -->
   <link rel="stylesheet" href="dist/style.css">
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
-	<script>
-		var socket = io("http://localhost:3457");
+	<!-- <script>
+		var socket = io("http://localhost:3456");
     socket.on('reload', function(){
 			document.location.reload();
     });
-	</script>
+	</script> -->
 </head>
 
 <body>
+  <h1>Bioactivity Graph Demo</h1>
   <div class="bluegenesToolBioactiviyGraph" id='yourDiv' />
   <script>
     window.onload = function() {
     	// InterMine service, including URL and optionally token.
-      var imService = { root: 'https://www.humanmine.org/humanmine' };
+      var imService = { root: 'http://10.100.60.138:8080/targetmine' };
 	    // The element to attach the viewer to. Must be an existing DOM element.
     	var elem = document.getElementById('yourDiv'),
         // We use imjs to acquire the example data for initializing the tool,
@@ -43,7 +44,7 @@
         getDataForTool = function() {
           var service = new imjs.Service(imService);
           // You can change this to a different object type and identifier.
-          return service.lookup('Gene', 'GATA1');
+          return service.lookup('ChemblCompound', 'ChEMBL:CHEMBL1000');
         },
     		toolState = {}, // To be confirmed how we use this.
         navigate = function(type, data, mine) {

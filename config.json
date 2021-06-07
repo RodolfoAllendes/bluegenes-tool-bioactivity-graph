@@ -1,12 +1,12 @@
 {
   "accepts": ["id"],
-  "classes": ["Gene"],
+  "classes": ["ChemblCompound"],
   "files" : {
     "css" : "dist/style.css",
     "js" : "dist/bundle.js"
   },
   "toolName" : {
-    "human" :"TargetMine Bioactivity Graph",
+    "human" :"Bioactivity Graph",
     "cljs" :"bluegenesToolBioactiviyGraph"    
   },
   "version": 2
