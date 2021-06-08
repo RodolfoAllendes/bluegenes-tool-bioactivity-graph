@@ -28,8 +28,8 @@ export class BioActivityGraph {
 		/* used for the display of violin plots associated to the data points */
 		this._bins = undefined;
 		/* the list of colors and shapes used to display data points */
-		this._colors = undefined;
-		this._shapes = undefined;
+		this._colors = { Default: '#C0C0C0' };
+		this._shapes = { Default: 'Circle' };
 		/* exit if there is no data to display */
 		if (chemblObj.targetProteins.length === 0) {
 			d3.select('#bioActivityGraph-div').text(
@@ -47,15 +47,14 @@ export class BioActivityGraph {
 		this._yAxis = undefined;
 		this.initYAxis(chemblObj.targetProteins);
 		/* Initialize data points, position, color and shape */
-		// super.setPointPositions();
-		// super.initColorsAndShapes(false);
-		// super.assignColors();
-		// super.assignShapes();
+		this.updatePointPositions();
+		this.updatePointColors();
+		this.updatePointShapes();
 		// /* Initialize histogram for violin plots display */
 		// super.initHistogramBins();
 
-		// /* init DOM elements */
-		// this.initDOM();
+		/* Update DOM elements */
+		this.updateDOM();
 		// /* assign functionality to different interface components */
 		// let self = this;
 		// d3.select('#input[type=checkbox]')
@@ -148,22 +147,6 @@ export class BioActivityGraph {
 		});
 		return points;
 	}
-
-	// 	/* First, we update the three tables used for visualization handling within
-	// 	 * the graph */
-	// 	this.updateColorTable();
-	// 	this.updateShapeTable();
-	// 	this.updateVisualsTable();
-
-	// 	/* 'column' options are fixed */
-	// 	self.updateSelectOptions('#modal-column-select', [...new Set(this._data.columns.filter( e => typeof(this._data[0][e]) === 'string'))]);
-	// 	/* but each time a new column is selected, the options in the 'value' select
-	// 	 * need to be updated */
-	// 	d3.select('#modal-column-select')
-	// 		.dispatch('change') // make sure to initially update the values
-	// 		;
-	// }
-
 	// /**
 	//  * Display the modal to allow user interaction
 	//  *
@@ -268,45 +251,45 @@ export class BioActivityGraph {
 	// 		;
 	// }
 
-	// /**
-	//  * Initialize the display of the color table
-	//  *
-	//  */
-	// updateColorTable(){
-	// 	let self = this;
-	// 	let keys = Object.keys(this._colors);
-	// 	let values = Object.values(this._colors);
-	// 	/* these are the DOM elements in each row of the table */
-	// 	let rowComponents = [
-	// 		{ 'type': 'div', 'attr':[['class', 'flex-cell display']] },
-	// 		{ 'type': 'div', 'attr':[['class', 'flex-cell label']] },
-	// 		{ 'type': 'span', 'attr':[['class', 'flex-cell small-close']] },
-	// 	];
-	// 	super.initTableRows('#color-table', 'color', keys, rowComponents);
-	// 	/* update the color backgroud of the display are of each row */
-	// 	d3.select('#color-table').selectAll('.display')
-	// 		.data(values)
-	// 		.style('background-color', d => d )
-	// 	;
-	// 	/* set the labels for each row */
-	// 	d3.select('#color-table').selectAll('.label')
-	// 		.data(keys)
-	// 		.text(d => d)
-	// 	;
-	// 	/* update the small close span element */
-	// 	d3.select('#color-table').selectAll('.small-close')
-	// 		.data(keys)
-	// 		.attr('data-key', d => d)
-	// 		.html('&times;')
-	// 		.on('click', function(d){
-	// 			if( this.dataset.key === 'Default' ) return;
-	// 			delete( self._colors[this.dataset.key] );
-	// 			self.assignColors();
-	// 			self.updateColorTable();
-	// 			self.plot();
-	// 		})
-	// 	;
-	// }
+	/**
+	 * Initialize the display of the color table
+	 *
+	 */
+	updateTableColor() {
+		/* clear previous elements */
+		d3.select('color-table > tbody')
+			.selectAll('div')
+			.remove();
+
+		let keys = Object.keys(this._colors);
+		let values = Object.values(this._colors);
+		d3.select('#color-table > tbody')
+			.selectAll('div')
+			.data(keys)
+			.enter()
+			.append('div')
+				.attr('class', 'flex-row')
+				.attr('id', d => 'color-' + d)
+				.each(function(d, i) {
+					let row = d3.select(this);
+					row.append('div')
+						.attr('class', 'flex-cell display')
+						.style('background-color', values[i]);
+					row.append('div')
+						.attr('class', 'flex-cell label')
+						.text(d);
+					row.append('span')
+						.attr('class', 'flex-cell small-close')
+						.attr('data-key', d => d)
+						.html('&times;');
+				// 	.on('click', function(d){
+				// 		if( this.dataset.key === 'Default' ) return;
+				// 		delete( self._colors[this.dataset.key] );
+				// 		self.assignColors();
+				// 		self.updateColorTable();
+				// 		self.plot();;
+				});
+	}
 
 	// /**
 	//  * Initialize the display of the shape table
@@ -428,7 +411,7 @@ export class BioActivityGraph {
 				let symbol = d3
 					.symbol()
 					.size(50)
-					.type(s.indexOf(d.shape));
+					.type(d3.symbols[s.indexOf(d.shape)]);
 				return symbol();
 			});
 		/* each point will also have an associated svg title (tooltip) */
@@ -479,27 +462,6 @@ export class BioActivityGraph {
 	// 	;
 	// }
 	// /**
-	//  * Initialize list of colors and Shapes
-	//  * Different colors and shapes can be used to differentiate the categories of
-	//  * data points according to their X-axis dimension. Here, we generate the list
-	//  * of all colors and shapes according to the currently displayed categories.
-	//  *
-	//  * @param {boolean} addXLabels Flag that indicates if individual shapes and
-	//  * colors should be assiged for each individual category available in the
-	//  * X axis of the graph. Default value: true.
-	//  */
-	// initColorsAndShapes(addXLabels=true){
-	// 	/* init the default color and shape of data elements */
-	// 	this._colors = { 'Default': '#C0C0C0' };
-	// 	this._shapes = { 'Default': 'Circle' };
-	// 	/* upon request, add individual color for each _xLabel */
-	// 	if( addXLabels == true ){
-	// 		this._xLabels.map( (label, i) => {
-	// 			this._colors[label] = d3.schemeCategory10[i%d3.schemeCategory10.length];
-	// 		});
-	// 	}
-	// }
-
 	// /**
 	//  * Initialize the graph's data distribution bins
 	//  * Histogram bins are used for the display of violin of the data. A single
@@ -528,95 +490,6 @@ export class BioActivityGraph {
 	// 		d => d['Activity Type']
 	// 	);
 	// }
-
-	// /**
-	//  * Assing color to data points.
-	//  * The list of current colors is stored in the _colors object. Each item in
-	//  * the data-set has its VALUES matched to the KEYS of the _colors list, in
-	//  * order to find a match.
-	//  */
-	// assignColors(){
-	// 	/* extract the list of values with a color code (keys from the _colors list) */
-	// 	let colorkeys = Object.keys(this._colors);
-	// 	/* for each data point, check if any of its values is part of this list, and
-	// 	 * assign a color accordingly. Default color is assigned otherwise. */
-	// 	this._data.forEach( (item,i) => {
-	// 		for(let j=colorkeys.length-1; j>0; --j){
-	// 			if( Object.values(item).includes(colorkeys[j]) ){
-	// 				item.color = this._colors[colorkeys[j]];
-	// 				return;
-	// 			}
-	// 		}
-	// 		item.color = this._colors.Default;
-	// 	}, this);
-	// }
-
-	// /**
-	//  * Assign shape to data points.
-	//  * The list of current shapes is stored in the _shapes object. Each item in
-	//  * the data-set has its VALUES matched to the KEYS of the _shapes list, in
-	//  * order to find a match.
-	//  */
-	// assignShapes(){
-	// 	/* extract the list of the values with a shape code (keys from _shapes) */
-	// 	let shapekeys = Object.keys(this._shapes);
-	// 	/* for each data point, check if any of its values is part of the list, and
-	// 	 * assing a shape accordingly. Default shape is assigned otherwise */
-	// 	this._data.forEach( (item,i) => {
-	// 		for( let j=shapekeys.length-1; j>0; --j){
-	// 			if( Object.values(item).includes(shapekeys[j]) ){
-	// 				item.shape = this._shapes[shapekeys[j]];
-	// 				return;
-	// 			}
-	// 		}
-	// 		item.shape = this._shapes.Default;
-	// 	}, this);
-	// }
-
-	// /**
-	//  * Initialize table components
-	//  *
-	//  * @param {string} tableid The id of the table whose elements we are going to
-	//  * modify
-	//  * @param {string} type A string that describes the visual elemets for which
-	//  * the table is used
-	//  * @param {array} rowElements List of identifiers for each row of the table
-	//  * @param {object} rowComponents List of elements to be added to each row
-	//  */
-	// initTableRows(tableid, type, rowElements, rowComponents){
-	// 	d3.select(tableid+' > tbody').selectAll('div').remove();
-	// 	d3.select(tableid+' > tbody').selectAll('div')
-	// 		.data(rowElements)
-	// 		.enter().append('div')
-	// 			.attr('class', 'flex-row')
-	// 			.attr('id', d => type+'-'+d)
-	// 			.each(function(d,i){
-	// 				rowComponents.forEach(g => {
-	// 					let ele = d3.select(this).append(g.type);
-	// 					g.attr.forEach( h => {
-	// 						ele.attr(h[0], h[1]);
-	// 					});
-	// 				});
-	// 			})
-	// }
-
-	// /**
-	//  * Set the position (in display coordinates) of each point in the data
-	//  *
-	//  * @param {boolean} jitter Should the position of the point be randomly
-	//  * jittered along the X axis or not.
-	//  */
-	// setPointPositions(jitter=false){
-	// 	let X = this._xAxis.scale();
-	// 	let dx = X.bandwidth()/2;
-	// 	let Y = this._yAxis.scale();
-	// 	this._points.forEach(d => {
-	// 		d.x = X(d.type)+dx;
-	// 		if( jitter ) dx -= (dx/2)*Math.random();
-	// 		d.y = Y(d.value);
-	// 	},this);
-	// }
-
 	// /**
 	//  *
 	//  */
@@ -741,5 +614,83 @@ export class BioActivityGraph {
 				.style('text-anchor', 'middle')
 				.text(title);
 		}
+	}
+
+	/**
+	 * Update DOM elements based on user interaction
+	 */
+	updateDOM() {
+		this.updateTableColor();
+		// this.updateShapeTable();
+		// this.updateVisualsTable();
+
+		// 	/* 'column' options are fixed */
+		// 	self.updateSelectOptions('#modal-column-select', [...new Set(this._data.columns.filter( e => typeof(this._data[0][e]) === 'string'))]);
+		// 	/* but each time a new column is selected, the options in the 'value' select
+		// 	 * need to be updated */
+		// 	d3.select('#modal-column-select')
+		// 		.dispatch('change') // make sure to initially update the values
+		// 		;
+	}
+
+	/**
+	 * Assing color to data points.
+	 * The list of current colors is stored in the _colors object. Each item in
+	 * the data-set has its VALUES matched to the KEYS of the _colors list, in
+	 * order to find a match.
+	 */
+	updatePointColors() {
+		/* extract the list of values with a color code (keys from the _colors list) */
+		let colorkeys = Object.keys(this._colors);
+		/* for each data point, check if any of its values is part of this list, and
+		 * assign a color accordingly. Default color is assigned otherwise. */
+		this._points.forEach(d => {
+			Object.values(d).forEach(v => {
+				if (colorkeys.includes(v)) {
+					d.color = this._colors[v];
+					return;
+				}
+			}, this);
+			d.color = this._colors.Default;
+		}, this);
+	}
+
+	/**
+	 * Set the position (in display coordinates) of each point in the data
+	 *
+	 * @param {boolean} jitter Should the position of the point be randomly
+	 * jittered along the X axis or not.
+	 */
+	updatePointPositions(jitter = false) {
+		let X = this._xAxis.scale();
+		let dx = X.bandwidth() / 2;
+		let Y = this._yAxis.scale();
+		this._points.forEach(d => {
+			d.x = X(d.type) + dx;
+			if (jitter) dx -= (dx / 2) * Math.random();
+			d.y = Y(d.value);
+		}, this);
+	}
+
+	/**
+	 * Assign shape to data points.
+	 * The list of current shapes is stored in the _shapes object. Each item in
+	 * the data-set has its VALUES matched to the KEYS of the _shapes list, in
+	 * order to find a match.
+	 */
+	updatePointShapes() {
+		/* extract the list of the values with a shape code (keys from _shapes) */
+		let shapekeys = Object.keys(this._shapes);
+		/* for each data point, check if any of its values is part of the list, and
+		 * assing a shape accordingly. Default shape is assigned otherwise */
+		this._points.forEach(d => {
+			Object.values(d).forEach(v => {
+				if (shapekeys.includes(v)) {
+					d.shape = this._shapes[v];
+					return;
+				}
+			}, this);
+			d.shape = this._shapes.Default;
+		}, this);
 	}
 }

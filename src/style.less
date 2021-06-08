@@ -19,22 +19,6 @@
 		padding: 10px;
 	}
 
-	div.targetmineGraphCytoscape{
-		flex-grow: 1;
-		width: 100%;
-		height: inherit; /* auto; */
-	}
-	
-	#supraAdjacencyMatrixGraph-div{
-		width: 1500px;
-		height: 1500px;
-	}
-	
-	table.results{
-		border-spacing: 0px; /* cellspacing */
-		width: 100%;
-	}
-	
 	/* Overall CSS for the entire Graph Area */
 	div.targetmineGraphDisplayer{
 		display: flex;
@@ -44,7 +28,7 @@
 		height: 400px;
 	}
 	/* Definitions for the SVG (left) area of the graph */
-	.targetmineGraphSVG{
+	svg.targetmineGraphSVG{
 		flex-grow: 1;
 		width: 100%;
 		height: inherit; /* auto; */
@@ -54,6 +38,7 @@
 	div.rightColumn{
 		flex-direction: column;
 		width: 20%;
+		background-color: aliceblue;
 	}
 	div.flex-table{
 		display: flex;
@@ -63,7 +48,7 @@
 	.flex-row div, .flex-row select, .flex-row label{
 		display: flex;
 		box-sizing: border-box;
-		flex-direction: row;
+		flex-direction: column;
 		height: 20px;
 	}
 	svg.display-cell{
@@ -75,7 +60,7 @@
 		justify-content: center;
 		align-items: center;
 		width: 10%;
-		height: inherit;
+		// height: inherit;
 	}
 	div.label{
 		justify-content: left;

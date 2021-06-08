@@ -9,21 +9,21 @@
 	"extends": [
 		"eslint:recommended",
 		"plugin:react/recommended",
-		"prettier"
+		// "prettier"
 	],
 	"plugins": [
 		"import",
-		"prettier"
+		// "prettier"
 	],
 	"parserOptions": {
 		"sourceType": "module"
 	},
 	"rules": {
-		"indent": ["error", "tab"],
+		"indent": ["error", "tab", { "MemberExpression": "off" }],
 		"linebreak-style": ["error", "unix"],
 		"quotes": ["error", "single"],
 		"semi": ["error", "always"],
-		"prettier/prettier": "error",
+		// "prettier/prettier": "error",
 		"comma-dangle": ["error", "never"],
 		"react/prop-types": 0
 	},
