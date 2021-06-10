@@ -50,8 +50,8 @@ export class BioActivityGraph {
 		this.updatePointPositions();
 		this.updatePointColors();
 		this.updatePointShapes();
-		// /* Initialize histogram for violin plots display */
-		// super.initHistogramBins();
+		/* Initialize histogram for violin plots display */
+		this.initHistogramBins();
 		/* Update DOM elements */
 		this.updateTableColor();
 		this.updateTableShape();
@@ -86,9 +86,39 @@ export class BioActivityGraph {
 		d3.select('#shape-add').on('click', function() { self.modalDisplay('shape'); });
 		d3.select('#input[type=checkbox]').on('change', () => { self.plot();} );
 		/* Modal inputs */
-		d3.select('#modal-select-column').on('change', function(e) { self.updateSelectOptions('#modal-select-value', e.target.value); });
+		d3.select('#modal-select-column')
+			.on('change', function(e) { self.updateSelectOptions('#modal-select-value', e.target.value); })
+			.dispatch('change');
 		d3.select('#modal-ok').on('click', function() { self.modalOK(); });
 		d3.select('#modal-cancel').on('click', function() { d3.select('#modal_bioActivity').style('display', 'none'); });
+	}
+
+	/**
+	 * Initialize the graph's data distribution bins
+	 * Histogram bins are used for the display of violin of the data. A single
+	 * violin plot is associated to each tick along the xAxis of the graph.
+	 * tic
+	 *
+	 * @param {number} nBins The number of bins to use. Default value 10
+	 */
+	initHistogramBins(nBins=10){
+		let self = this;
+		/* function used to define the number of bins and the bounds for each of
+			* them */
+		let histogram = d3.bin()
+			.domain(self._yAxis.scale().domain())
+			.thresholds(self._yAxis.scale().ticks(nBins))
+			.value(d => d);
+		/* actually bin the data points */
+		this._bins = d3.rollup(
+			self._points,
+			p => {
+				let input = p.map( g => g.value);
+				let bins = histogram(input);
+				return bins;
+			},
+			d => d.type
+		);
 	}
 
 	/**
@@ -274,35 +304,6 @@ export class BioActivityGraph {
 				'nM'
 			);
 		});
-	}
-	
-	/**
-	 * Initialize the graph's data distribution bins
-	 * Histogram bins are used for the display of violin of the data. A single
-	 * violin plot is associated to each tick along the xAxis of the graph.
-	 * tic
-	 *
-	 * @param {number} nBins The number of bins to use. Default value 10
-	 */
-	initHistogramBins(nBins=10){
-		let self = this;
-		/* function used to define the number of bins and the bounds for each of
-		 * them */
-		let histogram = d3.bin()
-			.domain(self._yAxis.scale().domain())
-			.thresholds(self._yAxis.scale().ticks(nBins))
-			.value(d => d)
-			;
-		/* actually bin the data points */
-		this._bins = d3.rollup(
-			self._data,
-			d => {
-				let input = d.map( g => g['Activity Concentration']);
-				let bins = histogram(input);
-				return bins;
-			},
-			d => d['Activity Type']
-		);
 	}
 	
 	/**
@@ -575,6 +576,7 @@ export class BioActivityGraph {
 	*
 	*/
 	updateTableVisuals() {
+		let self = this;
 		/* Event handlers association */
 		d3.select('#cb-violin').on('change', function(){
 			if( this.checked )
@@ -584,7 +586,7 @@ export class BioActivityGraph {
 			}
 		});
 		d3.select('#cb-jitter').on('change', function(){
-			self.setPointPositions(this.checked);
+			self.updatePointPositions(this.checked);
 			self.plot();
 		});
 	}

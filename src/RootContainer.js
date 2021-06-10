@@ -49,10 +49,6 @@ class RootContainer extends React.Component {
 								<option value="primaryAccession">Primary Accession</option>
 								<option value="symbol">Gene symbol</option>
 								<option value="type">Activity Type</option>
-
-								{/*on: new Map([ ['change',function(e){
-									let values = [...new Set(self._data.map(pa => pa[e.target.value]))];
-									self.updateSelectOptions('#modal-value-select', values);}] ]), */}
 							</select>
 							<label className="modal-label">Value:</label>
 							<select id="modal-select-value" className="modal-select"></select>
