@@ -1,0 +1,13 @@
+{
+  "accepts": ["id"],
+  "classes": ["ChemblCompound"],
+  "files" : {
+    "css" : "dist/style.css",
+    "js" : "dist/bundle.js"
+  },
+  "toolName" : {
+    "human" :"Bioactivity Graph",
+    "cljs" :"bluegenesToolBioactivityGraph"    
+  },
+  "version": 2
+}
