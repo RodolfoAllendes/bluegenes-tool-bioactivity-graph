@@ -6,57 +6,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>
-<<<<<<< HEAD
-    TargetMine Bioactivity Graph
-=======
     Bioactivity Graph
->>>>>>> no-react
   </title>
 
   <!-- You can assume imjs is on the window.  -->
   <script src="node_modules/imjs/dist/im.min.js"></script>
   <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
-<<<<<<< HEAD
-	<script src="https://d3js.org/d3.v6.min.js"></script>
-  
-  <script crossorigin src="https://unpkg.com/react@16/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@16/umd/react-dom.production.min.js"></script>
-=======
 	<script src="https://d3js.org/d3.v7.min.js"></script>
->>>>>>> no-react
   
 
   <!-- These are the styles YOU implement in src/style.less -->
   <link rel="stylesheet" href="dist/style.css">
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
-<<<<<<< HEAD
-	<!-- <script>
-		var socket = io("http://10.100.60.138:3456");
-    socket.on('reload', function(){
-			document.location.reload();
-    });
-	</script> -->
-</head>
-
-<body>
-  <h1>Bioactivity Graph Demo</h1>
-  <div class="bluegenesToolBioactiviyGraph" id='yourDiv' />
-  <script>
-    window.onload = function() {
-    	// InterMine service, including URL and optionally token.
-      var imService = { root: 'http://10.100.60.138:8080/targetmine' };
-	    // The element to attach the viewer to. Must be an existing DOM element.
-    	var elem = document.getElementById('yourDiv'),
-        // We use imjs to acquire the example data for initializing the tool,
-        // as hardcoding object IDs would require them to be updated on every
-        // database rebuild in the respective Intermine.
-        getDataForTool = function() {
-          var service = new imjs.Service(imService);
-          // You can change this to a different object type and identifier.
-          return service.lookup('ChemblCompound', 'ChEMBL:CHEMBL1000');
-        },
-    		toolState = {}, // To be confirmed how we use this.
-=======
 	<script>
 		var socket = io("http://10.100.60.138:3457");
     socket.on('reload', function(){
@@ -79,7 +40,6 @@
 	    // The element to attach the viewer to. Must be an existing DOM element.
     	var elem = document.getElementById('yourDiv'),
         toolState = {},
->>>>>>> no-react
         navigate = function(type, data, mine) {
           // Helpful console message when calling navigate function.
           var someMine = mine ? "on ".concat(mine) : null;
@@ -90,30 +50,6 @@
         };
     	// The method signature should match the signature in src/index.js
     	$.ajax('config.json').then(function(config) {
-<<<<<<< HEAD
-        getDataForTool().then(function(response) {
-          if (!response.length) throw new Error('Failed to initialize tool. No results when fetching data for initializing tool with. Please check demo.html:getDataForTool')
-
-          var obj = response[0];
-          // This represents an example of what would be passed to this tool.
-          var dataForTool = {
-            [obj.class]: {
-              class: obj.class,
-              format: 'id',
-              value: obj.objectId
-            }
-          };
-
-          bluegenesToolBioactiviyGraph.main(
-            elem,
-            imService,
-            dataForTool,
-            toolState,
-            config,
-            navigate
-          );
-        });
-=======
         // This represents an example of what would be passed to this tool.
         var dataForTool = {
           ChemblCompound: {
@@ -131,15 +67,10 @@
 					config,
 					navigate
 				);
->>>>>>> no-react
     	});
     };
   </script>
   <script src="dist/bundle.js"></script>
 
 </body>
-<<<<<<< HEAD
-
-=======
->>>>>>> no-react
 </html>
