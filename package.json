@@ -16,14 +16,22 @@
     "webpack:dev:build": "./node_modules/.bin/webpack --mode=development",
     "webpack:watch": "./node_modules/.bin/webpack --watch",
     "less": "lessc src/style.less dist/style.css --clean-css",
+    "less:dev": "./node_modules/less-watch-compiler/dist/less-watch-compiler.js src dist",
     "lint": "./node_modules/.bin/eslint src/*.js -c .eslintrc --ext js",
     "lint:fix": "./node_modules/.bin/eslint src/*.js -c .eslintrc --ext js --fix",
     "prepack": "npm run build && npm run less"
   },
   "husky": {
     "hooks": {
-      "pre-commit": "lint-staged",
-      "pre-push": "npm test"
+      "pre-commit": "lint-staged"
+    }
+  },
+  "jest": {
+    "transformIgnorePatterns": [
+      "<rootDir>/node_modules/(?!d3)/"
+    ],
+    "transform": {
+      "^.+\\.js$": "babel-jest"
     }
   },
   "lint-staged": {
@@ -38,31 +46,30 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@babel/runtime": "^7.14.0",
-    "d3": "^6.7.0",
-    "react": "^16.8.6",
-    "react-dom": "^16.8.6"
+    "@babel/runtime": "^7.15.4",
+    "d3": "^7.0.1",
+    "file-saver": "^2.0.5"
   },
   "devDependencies": {
-    "@babel/core": "^7.4.4",
-    "@babel/plugin-transform-runtime": "^7.14.3",
-    "@babel/preset-env": "^7.4.4",
-    "@babel/preset-react": "^7.0.0",
-    "@types/jest": "^24.0.13",
-    "babel-loader": "^8.0.6",
+    "@babel/core": "^7.15.5",
+    "@babel/plugin-transform-runtime": "^7.15.0",
+    "@babel/preset-env": "^7.15.6",
+    "@types/jest": "^24.9.1",
+    "babel-eslint": "^10.1.0",
+    "babel-loader": "^8.2.2",
     "chokidar": "^3.0.0",
     "css-loader": "^3.4.2",
     "eslint": "^5.16.0",
     "eslint-config-prettier": "^4.2.0",
     "eslint-plugin-import": "^2.17.2",
     "eslint-plugin-prettier": "^3.1.0",
-    "eslint-plugin-react": "^7.13.0",
     "express": "^4.16.3",
     "husky": "^2.2.0",
     "imjs": "^3.16",
     "jest": "^24.8.0",
     "less": "^3.8.1",
     "less-plugin-clean-css": "^1.5.1",
+    "less-watch-compiler": "^1.13.0",
     "lint-staged": "^8.1.6",
     "prettier": "^1.17.0",
     "socket.io": "^2.2.0",

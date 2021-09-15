@@ -1,13 +1,14 @@
 'use strict';
 
-import * as d3 from 'd3';
+// import { saveAs } from 'file-saver';
+const d3 = require('d3');
 
 /**
  * @class BioActivityGraph
  * @classdesc Used to display the bioactivity levels of a given compound in their
  * corresponding report page
  * @author Rodolfo Allendes
- * @version 1.1 Adapted to use a scaleBand
+ * @version 2.0 Removed React
  */
 export class BioActivityGraph {
 	/**
@@ -17,10 +18,12 @@ export class BioActivityGraph {
 	 * TargetMine
 	 */
 	constructor(chemblObj) {
-		/* initialize super class attributes */
-		this._type = 'bioActivity';
-		this._name = chemblObj.name;
-		this._containerId = undefined;
+		/* exit if there is no data to display */
+		if (chemblObj.targetProteins.length === 0) {
+			d3.select('div#bioActivityGraph')
+				.text('No BioActivity Data to Display.');
+			return;
+		}
 		/* width and height of the canvas, together with margins for the graph */
 		this._width = 400;
 		this._height = 400;
@@ -28,24 +31,14 @@ export class BioActivityGraph {
 		/* used for the display of violin plots associated to the data points */
 		this._bins = undefined;
 		/* the list of colors and shapes used to display data points */
-		this._colors = { Default: '#C0C0C0' };
-		this._shapes = { Default: 'Circle' };
-		/* exit if there is no data to display */
-		if (chemblObj.targetProteins.length === 0) {
-			d3.select('#bioActivityGraph-div').text(
-				'No BioActivity Data to Display.'
-			);
-			return;
-		}
+		this._colors = new Map([['Default', '#C0C0C0']]);
+		this._shapes = new Map([['Default', 'Circle']]);
+		
 		/* initilize points */
-		this._points = this.loadData(chemblObj.targetProteins);
-
+		this._data = this.loadData(chemblObj.targetProteins);
 		/* Initialize the Axis of the graph */
-		this._xLabels = this.extractXLabels(chemblObj.targetProteins);
-		this._xAxis = undefined;
-		this.initXAxis();
-		this._yAxis = undefined;
-		this.initYAxis(chemblObj.targetProteins);
+		this._xAxis = this.initXAxis();
+		this._yAxis = this.initYAxis();
 		/* Initialize data points, position, color and shape */
 		this.updatePointPositions();
 		this.updatePointColors();
@@ -55,25 +48,11 @@ export class BioActivityGraph {
 		/* Update DOM elements */
 		this.updateTableColor();
 		this.updateTableShape();
-		this.updateTableVisuals();
 		this.initFunctions();
 		/* Plot the graph */
-		this.plot();
-	}
-
-	/**
-	 * Initialize the labels of the X axis of the Graph.
-	 *
-	 * @param {array} proteins The array containing all the target protein objects
-	 */
-	extractXLabels(proteins) {
-		let labels = [];
-		proteins.forEach(prot => {
-			prot.activities.forEach(act => {
-				if (!labels.includes(act.type)) labels.push(act.type);
-			});
-		});
-		return labels;
+		this.plotXAxis();
+		this.plotYAxis();
+		this.plotData();
 	}
 
 	/**
@@ -82,15 +61,20 @@ export class BioActivityGraph {
 	initFunctions() {
 		let self = this;
 		/* Right control buttons */
-		d3.select('#color-add').on('click', function() { self.modalDisplay('color'); });
-		d3.select('#shape-add').on('click', function() { self.modalDisplay('shape'); });
-		d3.select('#input[type=checkbox]').on('change', () => { self.plot();} );
+		d3.selectAll('#rightColumn_bioActivity button')
+			.on('click', function(){ 
+				self.modalDisplay(this.value);
+			});
 		/* Modal inputs */
-		d3.select('#modal-select-column')
-			.on('change', function(e) { self.updateSelectOptions('#modal-select-value', e.target.value); })
+		d3.selectAll('#bioActivityGraph div.im-modal div#panel-body-category')
+			.on('change', function(){ self.updateModalOptions(); })
 			.dispatch('change');
-		d3.select('#modal-ok').on('click', function() { self.modalOK(); });
-		d3.select('#modal-cancel').on('click', function() { d3.select('#modal_bioActivity').style('display', 'none'); });
+		d3.select('#modal-apply').on('click', function(){ self.modalOK(); });
+		d3.select('#bioActivityGraph div.im-modal a.close')
+			.on('click', function(){
+				d3.select('#bioActivityGraph div.im-modal')
+					.style('display', 'none');
+			});
 	}
 
 	/**
@@ -111,7 +95,7 @@ export class BioActivityGraph {
 			.value(d => d);
 		/* actually bin the data points */
 		this._bins = d3.rollup(
-			self._points,
+			self._data,
 			p => {
 				let input = p.map( g => g.value);
 				let bins = histogram(input);
@@ -127,12 +111,13 @@ export class BioActivityGraph {
 	 * the axis, we use the current this._xLabels
 	 */
 	initXAxis() {
+		let labels = this._data.reduce((p,c) => p.add(c.type), new Set());
 		/* use the scaleBand scale provided by D3 */
 		let scale = d3.scaleBand()
-			.domain(this._xLabels)
+			.domain([...labels.keys()])
 			.range([0, this._width - this._margin.left - this._margin.right])
 			.padding(0.05);
-		this._xAxis = d3.axisBottom(scale);
+		return d3.axisBottom(scale);
 	}
 
 	/**
@@ -140,27 +125,21 @@ export class BioActivityGraph {
 	 * The Y axis will always be numerical with a logarithmic scale.
 	 * The axis will be generated based on the min and max bioactivity values
 	 * found in the list of target proteins
-	 *
-	 * @param {array} proteins The list of target proteins
 	 */
-	initYAxis(proteins) {
+	initYAxis() {
 		/* find the min and max bioactivity values values*/
-		let min = +Infinity;
-		let max = -Infinity;
-		proteins.forEach(p => {
-			p.activities.forEach(a => {
-				max = Math.max(a.conc, max);
-				min = Math.min(a.conc, min);
-			});
-		});
+		let [min,max] = this._data.reduce((p,c) => {
+			p[0] = Math.min(c.value, p[0]);
+			p[1] = Math.max(c.value, p[1]);
+			return p;
+		}, [+Infinity, -Infinity]);
 		/* initialize the logarithmic scale */
 		let scale = d3
 			.scaleLog()
 			.domain([min, max])
 			.range([this._height - this._margin.bottom, this._margin.top])
 			.nice();
-		this._yAxis = d3.axisLeft(scale);
-		this._yAxis.ticks(10, '~g');
+		return d3.axisLeft(scale).ticks(10, '~g');
 	}
 
 	/**
@@ -180,6 +159,7 @@ export class BioActivityGraph {
 				let point = {
 					symbol: p.protein.symbol,
 					primaryAccession: p.protein.primaryAccession,
+					organism: p.protein.organism.name,
 					value: a.conc,
 					type: a.type,
 					unit: a.unit
@@ -198,32 +178,29 @@ export class BioActivityGraph {
 	 */
 	modalDisplay(type){
 		/* Set display to True */
-		d3.select('#modal_bioActivity')
-			.style('display', 'flex')
-			.attr('data-type', type);
-
-		/* define the title for the window */
-		d3.select('#modal-title')
-			.text('Select '+type+' to apply:');
-		/* update input elements */
-		d3.select('#modal-input-label')
-			.text(type + ':');
-		d3.selectAll('#modal-input > *').remove();
+		let modal = d3.select('#bioActivityGraph div#modal-bioActivity')
+			.attr('data-type', type)
+			.style('display', 'flex');
+			
 		/* If adding a color element, define a new color input  */
-		if( type === 'color' ){
-			d3.select('#modal-input').append('input')
+		modal.select('h3#panel-title-input')
+			.text(`${type} input`);
+		// define the color or shape input options
+		if( type === 'Color' ){
+			modal.select('#panel-body-input').selectAll('*').remove();
+			modal.select('#panel-body-input').append('input')
 				.attr('id', 'modal-selected')
 				.property('type', 'color')
 				.property('value', '#000000');
 		}
-		/* else, incorporate the input required for shape elements */
 		else{
 			let opts = ['Circle','Cross','Diamond','Square','Star','Triangle','Wye'];
-			d3.select('#modal-input').append('select')
-				.attr('id', 'modal-selected')
-				.selectAll('option').data(opts).enter().append('option')
-					.attr('value', d => d)
-					.text(d => d);
+			modal.select('#panel-body-input').selectAll('*').remove();
+			modal.select('#panel-body-input').selectAll('label')
+				.data(opts)
+				.join('label')
+					.classed('row-label', true)
+					.html((d) => `<input type="radio" name="radio-shape" value="${d}">\n${d}`);
 		}
 	}
 
@@ -235,75 +212,67 @@ export class BioActivityGraph {
 	 */
 	modalOK(){
 		/* hide the modal from view */
-		let modal = d3.select('#modal_bioActivity').style('display', 'none');
+		let m = d3.select('#bioActivityGraph .im-modal')
+			.style('display', 'none');
 		/* capture the type of modal and the values that the user selected */
-		let type = modal.attr('data-type');
-		let val = d3.select('#modal-select-value').property('value');
-		let upd = d3.select('#modal-selected').property('value');
+		let type = m.attr('data-type');
+		let val = d3.select('#bioActivityGraph .im-modal #panel-body-value input:checked').property('value');
 		/* update the corresponding table */
-		if( type === 'color' ){
-			this._colors[val] = upd;
+		if( type === 'Color' ){
+			let upd = d3.select('#bioActivityGraph .im-modal #panel-body-input input').property('value');
+			this._colors.set(val,upd);
 			this.updatePointColors();
 			this.updateTableColor();
 		}
 		else{
-			this._shapes[val] = upd;
+			let upd = d3.select('#bioActivityGraph .im-modal #panel-body-input input:checked').property('value');
+			this._shapes.set(val,upd);
 			this.updatePointShapes();
 			this.updateTableShape();
 		}
 		/* redraw the graph */
-		this.plot();
+		this.plotData();
 	}
 
 	/**
 	 * Plot a BioActivity Graph
 	 */
-	plot() {
-		/* plot the X and Y axis of the graph */
-		this.plotXAxis(0, 'Bio-Activity Type');
-		this.plotYAxis('Activity Concentration (nM)');
-
+	plotData() {
 		/* draw the points, grouped in a single graphics element  */
-		let canvas = d3.select('svg#canvas_bioActivity > g#graph');
-		canvas.selectAll('#points').remove();
-		canvas.append('g')
-			.attr('id', 'points')
+		d3.select('svg#canvas_bioActivity g#points')
 			.attr('transform', 'translate(' + this._margin.left + ', 0)');
-		/* Each data point will be d3 symbol (represented using svg paths) */
-		let pts = d3.select('#points').selectAll('g')
-			.data(this._points);
-		/* each point belongs to the 'data-point' class its positioned in the graph
+
+		/* Each data point will be d3 symbol (represented using svg paths) 
+		 * each point belongs to the 'data-point' class its positioned in the graph
 		 * according to the associated (x,y) coordinates and its drawn using its
 		 * color and shape */
-		let point = pts.enter().append('path')
-			.attr('class', 'data-point')
-			.attr('transform', d => 'translate(' + d.x + ' ' + d.y + ')')
-			.attr('fill', d => d.color)
-			.attr('d', function(d) {
-				let s = [
-					'Circle',
-					'Cross',
-					'Diamond',
-					'Square',
-					'Star',
-					'Triangle',
-					'Wye'
-				];
-				let symbol = d3.symbol().size(50).type(d3.symbols[s.indexOf(d.shape)]);
-				return symbol();
+		d3.select('svg#canvas_bioActivity g#points').selectAll('path')
+			.data(this._data)
+			.join('path')
+				.attr('class', 'data-point')
+				.attr('transform', d => 'translate(' + d.x + ' ' + d.y + ')')
+				.attr('fill', d => d.color)
+				.attr('d', function(d) {
+					let s = [
+						'Circle',
+						'Cross',
+						'Diamond',
+						'Square',
+						'Star',
+						'Triangle',
+						'Wye'
+					];
+					let symbol = d3.symbol().size(50).type(d3.symbols[s.indexOf(d.shape)]);
+					return symbol();
+				})
+			/* each point will also have an associated svg title (tooltip) */
+			.append('svg:title').text(d => {
+				return (
+					'Organism: '+d.organism+'\n'+
+					'Gene: '+d.symbol+'\n'+
+					'Concentation: '+d.value+'nM'
+				);
 			});
-		/* each point will also have an associated svg title (tooltip) */
-		point.append('svg:title').text(d => {
-			return (
-				'Organism: ' +
-				d['Organism Name'] +
-				'\nGene: ' +
-				d['Gene Symbol'] +
-				'\nConcentation: ' +
-				d['Activity Concentration'] +
-				'nM'
-			);
-		});
 	}
 	
 	/**
@@ -311,11 +280,11 @@ export class BioActivityGraph {
 	 */
 	plotViolins(){
 		/* add violin strips if requested */
-		let canvas = d3.select('svg#canvas_'+this._type+' > g#graph');
+		d3.select('svg#canvas_bioActivity g#violins').remove();
+		if(!d3.select('#rightColumn_bioActivity #cb-violin').property('checked')) return; 
 		let X = this._xAxis.scale();
 		let Y = this._yAxis.scale();
-		canvas.selectAll('#violins').remove();
-
+		
 		// What is the biggest number of value in a bin? We need it cause this value
 		// will have a width of 100% of the bandwidth.
 		let maxNum = 0;
@@ -328,89 +297,69 @@ export class BioActivityGraph {
 			.range([0, X.bandwidth()])
 			.domain([-maxNum, maxNum]);
 
-		canvas.append('g')
+		d3.select('svg#canvas_bioActivity g#graph')
+			.append('g')
 			.attr('id', 'violins')
-			.attr('transform', 'translate('+this._margin.left+', 0)');
-
-		let vls = d3.select('#violins').selectAll('g')
-			.data(this._bins);
-		vls.enter().append('g')        // So now we are working group per group
-			.attr('class', 'violin')
-			.attr('transform', d => 'translate(' + (X(d[0])+(X.bandwidth()/10)) +' ,0)')
-				.append('path')
-					.datum(d => d[1]) //extract only the bins
-					.attr('class', 'violin')
-					.attr('d', d3.area()
-						.x0( xNum(0) )
-						.x1(function(d){ return(xNum(d.length)); } )
-						.y(function(d){ return(Y(d.x0)); } )
-						.curve(d3.curveCatmullRom)    // This makes the line smoother to give the violin appearance. Try d3.curveStep to see the difference
-					);
+			.attr('transform', 'translate('+this._margin.left+', 0)')
+			.selectAll('g')
+				.data(this._bins)
+				.join('g')        // So now we are working group per group
+					.classed('violin', true)
+					.attr('transform', d => 'translate(' + (X(d[0])+(X.bandwidth()/10)) +' ,0)')
+					.append('path')
+						.datum(d => d[1]) //extract only the bins
+						.attr('class', 'violin')
+						.attr('d', d3.area()
+							.x0( xNum(0) )
+							.x1(function(d){ return(xNum(d.length)); } )
+							.y(function(d){ return(Y(d.x0)); } )
+							.curve(d3.curveCatmullRom)    // This makes the line smoother to give the violin appearance. Try d3.curveStep to see the difference
+						);
 	}
 
 	/**
 	 * Add the X axis to the graph
-	 *
-	 * @param {int} labelAngle An optional rotation angle for Axis' ticks
-	 * @param {string} title An optional title for the X axis
 	 */
-	plotXAxis(labelAngle = 0, title = undefined) {
+	plotXAxis() {
 		/* remove previous axis components */
-		let canvas = d3.select('svg#canvas_' + this._type + ' > g#graph');
-		canvas.selectAll('#bottom-axis').remove();
-		/* add the axis to the display, making sure it is positioned only within the
-		 * area of the graph allocated for that */
-		let g = canvas
-			.append('g')
-			.attr('id', 'bottom-axis')
+		d3.select('svg#canvas_bioActivity g#bottom-axis')
 			.attr('transform', 'translate(' +	this._margin.left +	', ' + (this._height - this._margin.bottom) +	')')
 			.call(this._xAxis);
-		/* rotate the labels of the axis - if the rotation angle is != 0 */
-		if (labelAngle != 0) {
-			g.selectAll('text')
-				.attr('y', 0)
-				.attr('x', 9)
-				.attr('dy', '.35em')
-				.attr('transform', 'rotate(' + labelAngle + ')')
-				.style('text-anchor', 'start');
-		}
-		/* add title to the axis, if defined
-		 * The title is always positioned anchored to the mid-point of the bottom
-		 * margin */
-		if (title !== undefined) {
-			d3.selectAll('svg#canvas_' + this._type + ' > text#bottom-axis-label').remove();
-			canvas.append('text')
-				.attr('id', 'bottom-axis-label')
-				.attr('transform', 'translate(' +	this._width / 2 +	',' +	(this._height - this._margin.bottom / 3) + ')')
-				.style('text-anchor', 'middle')
-				.text(title);
-		}
+		/* position the title text */
+		d3.select('svg#canvas_bioActivity text#bottom-axis-title')
+			.attr('transform', 'translate(' +	this._width / 2 +	',' +	(this._height - this._margin.bottom / 3) + ')')
+			.style('text-anchor', 'middle');
 	}
 
 	/**
 	 * Add the Y-axis to the graph
 	 */
-	plotYAxis(title = undefined) {
-		let canvas = d3.select('svg#canvas_' + this._type + ' > g#graph');
-		canvas.selectAll('#left-axis').remove();
-		canvas
-			.append('g')
-			.attr('id', 'left-axis')
+	plotYAxis() {
+		d3.select('svg#canvas_bioActivity g#left-axis')
 			.attr('transform', 'translate(' + this._margin.left + ',0)')
 			.call(this._yAxis);
-		/* if defined, add a title to the axis */
-		if (title !== undefined) {
-			canvas.selectAll('text#left-axis-label').remove();
-			canvas
-				.append('text')
-				.attr('id', 'left-axis-label')
-				.attr('transform', 'rotate(-90)')
-				.attr('y', -this._margin.left / 3)
-				.attr('x', -this._height / 2)
-				.attr('dy', '1em')
-				.style('text-anchor', 'middle')
-				.text(title);
-		}
+		/* position the title */
+		d3.select('svg#canvas_bioActivity text#left-axis-title')
+			.attr('transform', 'rotate(-90)')
+			.attr('y', -this._margin.left / 3)
+			.attr('x', -this._height / 2)
+			.attr('dy', '1em')
+			.style('text-anchor', 'middle');
+	}
+
+	/**
+	 * 
+	 */
+	updateModalOptions(){
+		let key = d3.select('#bioActivityGraph .im-modal #panel-body-category input:checked').property('value');
+		let opts = this._data.reduce((p,c) => p.add(c[key]) ,new Set());
+		
+		d3.select('#bioActivityGraph .im-modal #panel-body-value').selectAll('*').remove();
+		d3.select('#bioActivityGraph .im-modal #panel-body-value').selectAll('label')
+			.data([...opts])
+			.join('label')
+				.classed('row-label', true)
+				.html((d) => `<input type="radio" name="radio-value" value="${d}">\n${d}`);
 	}
 
 	/**
@@ -420,15 +369,13 @@ export class BioActivityGraph {
 	 * order to find a match.
 	 */
 	updatePointColors() {
-		/* extract the list of values with a color code (keys from the _colors list) */
-		let colorkeys = Object.keys(this._colors);
 		/* for each data point, check if any of its values is part of this list, and
 		 * assign a color accordingly. Default color is assigned otherwise. */
-		this._points.map(p => {
-			p.color = this._colors.Default;
-			colorkeys.some(k => {
-				if (Object.values(p).includes(k)){
-					p.color = this._colors[k];
+		this._data = this._data.map(p => {
+			p.color = this._colors.get('Default');
+			[...this._colors.keys()].some(c => {
+				if (Object.values(p).includes(c)){
+					p.color = this._colors.get(c);
 					return true;
 				}
 			}, this);
@@ -438,19 +385,19 @@ export class BioActivityGraph {
 
 	/**
 	 * Set the position (in display coordinates) of each point in the data
-	 *
-	 * @param {boolean} jitter Should the position of the point be randomly
-	 * jittered along the X axis or not.
 	 */
-	updatePointPositions(jitter = false) {
+	updatePointPositions() {
+		let jitter = d3.select('#rightColumn_bioActivity #cb-jitter').property('checked');
+		let violin = d3.select('#rightColumn_bioActivity #cb-violin').property('checked');
 		let X = this._xAxis.scale();
-		let dx = X.bandwidth() / 2;
+		let xwidth = X.bandwidth()/4;
 		let Y = this._yAxis.scale();
-		this._points.forEach(d => {
+		this._data = this._data.map(d => {
+			let dx = (jitter && violin)? 2*xwidth-(xwidth*Math.random()) : jitter ? xwidth+(xwidth*2*Math.random()) : 2*xwidth;
 			d.x = X(d.type) + dx;
-			if (jitter) dx -= (dx / 2) * Math.random();
 			d.y = Y(d.value);
-		}, this);
+			return d;
+		});
 	}
 
 	/**
@@ -460,15 +407,13 @@ export class BioActivityGraph {
 	 * order to find a match.
 	 */
 	updatePointShapes() {
-		/* extract the list of the values with a shape code (keys from _shapes) */
-		let shapekeys = Object.keys(this._shapes);
 		/* for each data point, check if any of its values is part of the list, and
 		 * assing a shape accordingly. Default shape is assigned otherwise */
-		this._points.map(p => {
-			p.shape = this._shapes.Default;
-			shapekeys.some(k => {
-				if (Object.values(p).includes(k)) {
-					p.shape = this._shapes[k];
+		this._data = this._data.map(p => {
+			p.shape = this._shapes.get('Default');
+			[...this._shapes.keys()].some(s => {
+				if (Object.values(p).includes(s)) {
+					p.shape = this._shapes.get(s);
 					return true;
 				}
 			}, this);
@@ -476,58 +421,35 @@ export class BioActivityGraph {
 		}, this);
 	}
 
-	/**
-	 * Update the options available for a given Select DOM element.
-	 * Given the id of a select element, it updates the options available based on
-	 * the list of values provided
-	 *
-	 * @param {string} id The id of the select component that should be updated
-	 * @param {string} values The list of values to use for the definition of
-	 * options
-	 */
-	updateSelectOptions(id, key){
-		/* select all the elements */
-		let values = [...new Set(this._points.map(p => p[key]))];
-		d3.select(id).selectAll('option').remove();
-		d3.select(id).selectAll('option')
-			.data(values)
-			.enter().append('option')
-				.attr('value', d => d)
-				.text(d => d);
-	}
 
 	/**
 	 * Update the display of colors used in the display
 	 */
 	updateTableColor() {
 		let self = this;
-		/* clear previous elements */
-		d3.select('#color-table').selectAll('div').remove();
-		let keys = Object.keys(this._colors);
-		let values = Object.values(this._colors);
-		d3.select('#color-table').selectAll('div')
-			.data(keys).enter()
-			.append('div')
-				.attr('class', 'flex-row')
-				.attr('id', d => 'color-' + d)
-				.each(function(d, i) {
-					let row = d3.select(this);
-					row.append('div')
+		d3.select('div#rightColumn_bioActivity div#color-div').selectAll('.flex-row').remove();
+		d3.select('div#rightColumn_bioActivity div#color-div').selectAll('.flex-row')
+			.data([...this._colors.keys()])
+			.join('div')
+				.classed('flex-row', true)
+				.attr('id', d => 'color-'+d)
+				.each(function(d){
+					d3.select(this).insert('div')
 						.attr('class', 'row-cell')
-						.style('background-color', values[i]);
-					row.append('div')
+						.style('background-color', d => self._colors.get(d));
+					d3.select(this).insert('label')
 						.attr('class', 'row-label')
 						.text(d);
-					row.append('span')
-						.attr('class', 'row-small-close')
+					d3.select(this).insert('a')
+						.attr('class', 'row-close')
 						.attr('data-key', d)
-						.html('&times;')
+						.html('&times')
 						.on('click', function(){
 							if( this.dataset.key === 'Default' ) return;
-							delete( self._colors[this.dataset.key] );
+							self._colors.delete(this.dataset.key);
 							self.updatePointColors();
 							self.updateTableColor();
-							self.plot();
+							self.plotData();
 						});
 				});
 	}
@@ -538,56 +460,34 @@ export class BioActivityGraph {
 	updateTableShape(){
 		let self = this;
 		/* clear the previous elements */
-		d3.select('#shape-table').selectAll('div').remove();
-		/* we customize the DOM elements according to the values of the shapes list */
-		let keys = Object.keys(this._shapes);
-		let values = Object.values(this._shapes);
-		d3.select('#shape-table').selectAll('.div')
-			.data(keys).enter()
-			.append('div')
-				.attr('class', 'flex-row')
+		d3.select('div#rightColumn_bioActivity div#shape-div').selectAll('.flex-row').remove();
+		d3.select('div#rightColumn_bioActivity div#shape-div').selectAll('.flex-row')
+			.data([...this._shapes.keys()])
+			.join('div')
+				.classed('flex-row', true)
 				.attr('id', d => 'shape-' + d)
-				.each(function(d, i) {
-					let row = d3.select(this);
-					row.append('svg')
-						.attr('class', 'row-cell')
+				.each(function(d) {
+					d3.select(this).insert('svg')
+						.classed('row-cell',true)
 						.attr('viewBox', '-5 -5 10 10')
 						.append('path')
 							.attr('fill', 'black')
-							.attr('d', () => { return d3.symbol().type(d3['symbol'+values[i]]).size(10)(); });
-					row.append('div')
-						.attr('class', 'row-label')
+							.attr('d', () => { return d3.symbol().type(d3['symbol'+self._shapes.get(d)]).size(10)(); });
+					d3.select(this).insert('label')
+						.classed('row-label', true)
 						.text(d);
-					row.append('span')
-						.attr('class', 'row-small-close')
-						.attr('data-key', () => d)
-						.html('&times;')
+					d3.select(this).insert('a')
+						.classed('row-close', true)
+						.attr('data-key', d)
+						.html('&times')
 						.on('click', function(){
 							if( this.dataset.key === 'Default' ) return;
-							delete( self._shapes[this.dataset.key] );
+							self._shapes.delete(this.dataset.key);
 							self.updatePointShapes();
 							self.updateTableShape();
-							self.plot();
+							self.plotData();
 						});
 				});	
 	}
 
-	/**
-	*
-	*/
-	updateTableVisuals() {
-		let self = this;
-		/* Event handlers association */
-		d3.select('#cb-violin').on('change', function(){
-			if( this.checked )
-				self.plotViolins();
-			else{
-				d3.selectAll('#violins').remove();
-			}
-		});
-		d3.select('#cb-jitter').on('change', function(){
-			self.updatePointPositions(this.checked);
-			self.plot();
-		});
-	}
 }

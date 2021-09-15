@@ -7,7 +7,11 @@
   },
   "toolName" : {
     "human" :"Bioactivity Graph",
+<<<<<<< HEAD
     "cljs" :"bluegenesToolBioactiviyGraph"    
+=======
+    "cljs" :"bluegenesToolBioactivityGraph"    
+>>>>>>> no-react
   },
   "version": 2
 }

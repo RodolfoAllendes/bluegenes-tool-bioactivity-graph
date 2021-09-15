@@ -2,7 +2,11 @@ var express = require('express');
 var serveStatic = require('serve-static');
 var chokidar = require('chokidar');
 var spawnCommand = require('child_process').spawnSync;
+<<<<<<< HEAD
 var port = 3456;
+=======
+var port = 2345;
+>>>>>>> no-react
 
 var io = require('socket.io')(3457);
 var app = express();
