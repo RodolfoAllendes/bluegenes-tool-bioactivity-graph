@@ -1,12 +1,6 @@
-<<<<<<< HEAD
-#  TargetMine Bioactivity Graph
-
-TargetMine Bioactivity Graph is a tool made for [BlueGenes](http://bluegenes.apps.intermine.org) following BlueGenes Tool API.
-=======
 #  Bioactivity Graph
 
 Bioactivity Graph is a tool made for [BlueGenes](http://bluegenes.apps.intermine.org) following BlueGenes Tool API.
->>>>>>> no-react
 Add more description of your tool here! :)
 
 ## Licence
