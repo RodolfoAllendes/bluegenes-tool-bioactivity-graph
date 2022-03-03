@@ -180,7 +180,7 @@ export class BioActivityGraph {
 		/* Set display to True */
 		let modal = d3.select('#bioActivityGraph div#modal-bioActivity')
 			.attr('data-type', type)
-			.style('display', 'flex');
+			.style('display', 'block');
 			
 		/* If adding a color element, define a new color input  */
 		modal.select('h3#panel-title-input')
