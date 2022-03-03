@@ -19,7 +19,7 @@ export class BioActivityGraph {
 	 */
 	constructor(chemblObj) {
 		/* exit if there is no data to display */
-		if (chemblObj.targetProteins.length === 0) {
+		if (chemblObj === undefined || chemblObj.targetProteins.length === 0) {
 			d3.select('div#bioActivityGraph')
 				.text('No BioActivity Data to Display.');
 			return;
